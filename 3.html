@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鞋子購物網</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #E6E6FA; /* 淡紫色背景 */
+      color: #222; /* 深色字 */
+    }
+    header {
+      background: #D8BFD8;
+      padding: 1rem;
+      text-align: center;
+      color: #222;
+    }
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      background: #CDA4DE;
+      padding: 1rem;
+    }
+    nav a {
+      color: #222;
+      text-decoration: none;
+      font-weight: bold;
+      transition: color 0.3s;
+    }
+    nav a:hover {
+      color: #800080;
+    }
+    .page {
+      display: none;
+      padding: 2rem;
+      animation: fadeIn 1s;
+    }
+    .active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .product {
+      display: inline-block;
+      width: 200px;
+      margin: 1rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      text-align: center;
+      transition: transform 0.3s;
+    }
+    .product:hover {
+      transform: scale(1.05);
+    }
+    .product img {
+      width: 100%;
+      border-radius: 10px;
+    }
+    button {
+      margin-top: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: #CDA4DE;
+      color: #222;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #BA55D3;
+      color: white;
+    }
+    #cart-items {
+      margin-top: 1rem;
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>鞋子購物網</h1>
+  </header>
+  <nav>
+    <a href="#" onclick="showPage('home')">首頁</a>
+    <a href="#" onclick="showPage('shop')">商品</a>
+    <a href="#" onclick="showPage('cart')">購物車 (<span id="cart-count">0</span>)</a>
+    <a href="#" onclick="showPage('about')">關於我們</a>
+    <a href="#" onclick="showPage('contact')">聯絡我們</a>
+  </nav>
+
+  <!-- 首頁 -->
+  <section id="home" class="page active">
+    <h2>歡迎來到鞋子購物網</h2>
+    <p>我們提供多樣化的鞋款，讓您找到最適合的風格！</p>
+    <img src="https://cdn-icons-png.flaticon.com/512/863/863684.png" alt="鞋子插圖" width="200">
+  </section>
+
+  <!-- 商品頁 -->
+  <section id="shop" class="page">
+    <h2>精選商品</h2>
+    <div class="product">
+      <img src="https://pngimg.com/d/running_shoes_PNG5823.png" alt="運動鞋">
+      <p>運動鞋 - NT$2000</p>
+      <button onclick="addToCart('運動鞋',2000)">加入購物車</button>
+    </div>
+    <div class="product">
+      <img src="https://pngimg.com/d/sneakers_PNG4445.png" alt="休閒鞋">
+      <p>休閒鞋 - NT$1800</p>
+      <button onclick="addToCart('休閒鞋',1800)">加入購物車</button>
+    </div>
+    <div class="product">
+      <img src="https://pngimg.com/d/high_heels_PNG7544.png" alt="高跟鞋">
+      <p>高跟鞋 - NT$2500</p>
+      <button onclick="addToCart('高跟鞋',2500)">加入購物車</button>
+    </div>
+    <div class="product">
+      <img src="https://1000logos.net/wp-content/uploads/2017/03/Nike-Logo.png" alt="Nike">
+      <p>Nike 運動鞋 - NT$3200</p>
+      <button onclick="addToCart('Nike 運動鞋',3200)">加入購物車</button>
+    </div>
+    <div class="product">
+      <img src="https://1000logos.net/wp-content/uploads/2016/10/Adidas-Logo.png" alt="Adidas">
+      <p>Adidas 慢跑鞋 - NT$3000</p>
+      <button onclick="addToCart('Adidas 慢跑鞋',3000)">加入購物車</button>
+    </div>
+    <div class="product">
+      <img src="https://1000logos.net/wp-content/uploads/2017/05/New-Balance-Logo.png" alt="New Balance">
+      <p>New Balance 休閒鞋 - NT$2800</p>
+      <button onclick="addToCart('New Balance 休閒鞋',2800)">加入購物車</button>
+    </div>
+    <div class="product">
+      <img src="https://1000logos.net/wp-content/uploads/2020/05/Puma-Logo.png" alt="Puma">
+      <p>Puma 球鞋 - NT$2700</p>
+      <button onclick="addToCart('Puma 球鞋',2700)">加入購物車</button>
+    </div>
+  </section>
+
+  <!-- 購物車 -->
+  <section id="cart" class="page">
+    <h2>購物車</h2>
+    <div id="cart-items">
+      <p>您的購物車目前是空的。</p>
+    </div>
+    <button onclick="checkout()">結帳</button>
+  </section>
+
+  <!-- 關於我們 -->
+  <section id="about" class="page">
+    <h2>關於我們</h2>
+    <p>鞋子購物網致力於提供高品質的鞋款，結合時尚與舒適，讓每一步都充滿自信。</p>
+    <img src="https://cdn-icons-png.flaticon.com/512/3050/3050525.png" alt="團隊插圖" width="200">
+  </section>
+
+  <!-- 聯絡我們 -->
+  <section id="contact" class="page">
+    <h2>聯絡我們</h2>
+    <p>Email: support@shoes-shop.com</p>
+    <p>電話: (02) 1234-5678</p>
+    <img src="https://cdn-icons-png.flaticon.com/512/561/561127.png" alt="聯絡插圖" width="200">
+  </section>
+
+  <script>
+    let cart = [];
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+    }
+
+    function addToCart(name, price) {
+      cart.push({name, price});
+      document.getElementById('cart-count').innerText = cart.length;
+      renderCart();
+      alert(name + ' 已加入購物車!');
+    }
+
+    function renderCart() {
+      let cartDiv = document.getElementById('cart-items');
+      if (cart.length === 0) {
+        cartDiv.innerHTML = '<p>您的購物車目前是空的。</p>';
+        return;
+      }
+      let html = '<ul>';
+      let total = 0;
+      cart.forEach((item, index) => {
+        html += `<li>${item.name} - NT$${item.price} <button onclick="removeFromCart(${index})">刪除</button></li>`;
+        total += item.price;
+      });
+      html += `</ul><p><strong>總金額: NT$${total}</strong></p>`;
+      cartDiv.innerHTML = html;
+    }
+
+    function removeFromCart(index) {
+      cart.splice(index, 1);
+      document.getElementById('cart-count').innerText = cart.length;
+      renderCart();
+    }
+
+    function checkout() {
+      if (cart.length === 0) {
+        alert('購物車是空的，無法結帳!');
+        return;
+      }
+      alert('感謝您的購買! 總金額為 NT$' + cart.reduce((sum, item) => sum + item.price, 0));
+      cart = [];
+      document.getElementById('cart-count').innerText = 0;
+      renderCart();
+    }
+  </script>
+</body>
+</html>
