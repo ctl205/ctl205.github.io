@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>汽車購物網</title>
+<style>
+:root{
+  --bg:#0f0f0f; --card:#1a1a1a; --accent:#0ff; --muted:#aaa;
+  --radius:12px; --shadow:0 6px 20px rgba(0,255,255,0.2);
+  font-family:"Noto Sans TC", system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:white;}
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;background:#111;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo .mark{width:44px;height:44px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;}
+.search{flex:1;margin:0 18px;display:flex;gap:10px;}
+.search input{flex:1;padding:12px 14px;border-radius:10px;border:1px solid #0ff;background:transparent;color:white;}
+.btn{padding:10px 14px;border-radius:10px;background:var(--accent);color:#000;border:none;cursor:pointer;box-shadow:var(--shadow);}
+.outline{background:transparent;border:1px solid #0ff;padding:8px;border-radius:10px;cursor:pointer;color:#0ff;}
+
+.container{max-width:1150px;margin:22px auto;padding:0 18px;}
+.layout{display:grid;grid-template-columns:250px 1fr;gap:20px;}
+.sidebar{background:#111;padding:16px;border-radius:var(--radius);box-shadow:var(--shadow);}
+.sidebar h3{margin:0 0 10px 0;font-size:15px;}
+.filter{display:flex;flex-direction:column;gap:10px;}
+.filter select,.filter input{width:100%;padding:10px;border-radius:8px;border:1px solid #0ff;background:transparent;color:white;}
+
+.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;}
+.card{background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;}
+.card img{width:100%;height:150px;object-fit:cover;border-radius:var(--radius);}
+.card .title{font-weight:700;}
+.meta{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;}
+.price{font-weight:800;color:var(--accent);}
+.actions{display:flex;gap:8px;}
+
+#cartSidebar{
+  position:fixed;top:0;right:-400px;width:350px;height:100%;background:#111;padding:20px;box-shadow:-4px 0 20px rgba(0,255,255,0.2);
+  transition:0.3s;overflow-y:auto;z-index:100;
+}
+#cartSidebar.show{right:0;}
+#cartSidebar h2{margin-top:0;}
+.cartItem{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #0ff;}
+.cartItem button{background:#ff0066;color:#fff;border:none;padding:4px 8px;border-radius:6px;cursor:pointer;}
+
+footer{max-width:1150px;margin:28px auto;padding:18px;color:var(--muted);text-align:center;}
+
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr;}
+  .search{margin:10px 0;}
+}
+</style>
+</head>
+<body>
+<header>
+<div class="logo"><div class="mark">車</div><div><div style="font-weight:700">汽車購物網</div><div style="font-size:12px;color:var(--muted)">探索你的下一台愛車</div></div></div>
+<div class="search">
+<input id="searchInput" placeholder="搜尋車款、品牌或型號" />
+<button class="btn" id="searchBtn">搜尋</button>
+</div>
+<div style="display:flex;gap:12px;align-items:center">
+  <button class="outline" onclick="toggleView()">切換列表/卡片</button>
+  <button class="btn" id="cartBtn">🛒 購物車</button>
+</div>
+</header>
+
+<main class="container">
+  <div id="mainPage" class="layout">
+    <aside class="sidebar">
+      <h3>篩選條件</h3>
+      <div class="filter">
+        <select id="brandFilter"><option value="all">所有品牌</option><option>Bentley</option><option>BMW</option><option>Lexus</option><option>Mini</option><option>Ferrari</option><option>Benz</option><option>Maserati</option><option>McLaren</option><option>Porsche</option></select>
+        <select id="typeFilter"><option value="all">所有車型</option><option>轎車</option><option>SUV</option><option>電動車</option><option>跑車</option></select>
+        <input type="number" id="priceMax" placeholder="價格上限" />
+        <button class="btn" onclick="applyFilters()">套用篩選</button>
+      </div>
+    </aside>
+    <section>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 style="margin:0">熱銷車款</h2>
+        <div style="color:var(--muted);font-size:14px">顯示 <span id="resultsCount">0</span> 項結果</div>
+      </div>
+      <div id="products" class="products"></div>
+    </section>
+  </div>
+</main>
+
+<div id="cartSidebar">
+<h2>🛒 我的購物車</h2>
+<div id="cartItems"></div>
+<div id="cartSummary" style="margin-top:20px;font-weight:700"></div>
+</div>
+
+<footer>© 2025 汽車購物網 — 範例頁面</footer>
+
+<template id="cardTpl">
+<div class="card">
+  <img src="__IMG__" alt="__TITLE__">
+  <div class="title">__TITLE__</div>
+  <div class="meta"><div>__BRAND__ • __TYPE__</div><div class="price">NT$ __PRICE__</div></div>
+  <div class="actions">
+    <button class="outline" onclick="viewDetails('__ID__')">查看</button>
+    <button class="btn" onclick="addToCart('__ID__')">加入購物車</button>
+  </div>
+</div>
+</template>
+
+<script>
+const cars=[
+  {id:'c1',brand:'Bentley',title:'Continental GT',type:'跑車',price:11200000,img:'https://images.unsplash.com/photo-1617781383893-fb8098b5d0fa?auto=format&fit=crop&w=900&q=60',desc:'頂級英倫跑車'},
+  {id:'c2',brand:'BMW',title:'3 Series',type:'轎車',price:2198000,img:'https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=900&q=60',desc:'豪華操控'},
+  {id:'c3',brand:'Lexus',title:'RX 350',type:'SUV',price:2850000,img:'https://images.unsplash.com/photo-1617781383893-fb8098b5d0fa?auto=format&fit=crop&w=900&q=60',desc:'舒適穩定'},
+  {id:'c4',brand:'Mini',title:'Cooper S',type:'轎車',price:1680000,img:'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=900&q=60',desc:'迷你潮流'},
+  {id:'c5',brand:'Ferrari',title:'F8 Tributo',type:'跑車',price:12800000,img:'https://images.unsplash.com/photo-1617144105457-74d6c7c82b44?auto=format&fit=crop&w=900&q=60',desc:'超跑性能'},
+  {id:'c6',brand:'Benz',title:'C Class',type:'轎車',price:2350000,img:'https://images.unsplash.com/photo-1549921296-3a3a3e0a27b6?auto=format&fit=crop&w=900&q=60',desc:'舒適內裝'},
+  {id:'c7',brand:'Maserati',title:'Ghibli',type:'轎車',price:4300000,img:'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=60',desc:'義式風格'},
+  {id:'c8',brand:'McLaren',title:'720S',type:'跑車',price:13600000,img:'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=900&q=60',desc:'賽道級超跑'},
+  {id:'c9',brand:'Porsche',title:'911 Carrera',type:'跑車',price:9800000,img:'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=900&q=60',desc:'經典跑車'}
+];
+
+let cart=JSON.parse(localStorage.getItem('cart'))||{};
+
+function renderProducts(list){
+  const wrap=document.getElementById('products');
+  wrap.innerHTML='';
+  const tpl=document.getElementById('cardTpl').innerHTML;
+  list.forEach(item=>{
+    let html=tpl.replace(/__IMG__/g,item.img).replace(/__TITLE__/g,item.title)
+                .replace(/__BRAND__/g,item.brand).replace(/__TYPE__/g,item.type)
+                .replace(/__PRICE__/g,item.price.toLocaleString()).replace(/__ID__/g,item.id);
+    const div=document.createElement('div'); div.innerHTML=html; wrap.appendChild(div.firstElementChild);
+  });
+  document.getElementById('resultsCount').textContent=list.length;
+}
+
+function applyFilters(){
+  const brand=document.getElementById('brandFilter').value;
+  const type=document.getElementById('typeFilter').value;
+  const priceMax=Number(document.getElementById('priceMax').value)||Infinity;
+  renderProducts(cars.filter(c=>(brand==='all'||c.brand===brand)&&(type==='all'||c.type===type)&&c.price<=priceMax));
+}
+
+document.getElementById('searchBtn').onclick=()=>{
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  renderProducts(cars.filter(c=>(c.title+c.brand+c.type).toLowerCase().includes(q)));
+}
+
+function addToCart(id){
+  cart[id]=(cart[id]||0)+1;
+  localStorage.setItem('cart',JSON.stringify(cart));
+  updateCartUI();
+  showCart();
+}
+
+function removeFromCart(id){
+  delete cart[id];
+  localStorage.setItem('cart',JSON.stringify(cart));
+  updateCartUI();
+  renderCartSidebar();
+}
+
+function updateCartUI(){
+  const count=Object.values(cart).reduce((a,b)=>a+b,0);
+  document.getElementById('cartBtn').textContent=`🛒 購物車 (${count})`;
+}
+
+function renderCartSidebar(){
+  const items=document.getElementById('cartItems');
+  items.innerHTML='';
+  let total=0;
+  for(const id in cart){
+    const car=cars.find(c=>c.id===id);
+    const qty=cart[id];
+    const subtotal=car.price*qty;
+    total+=subtotal;
+    const div=document.createElement('div');
+    div.className='cartItem';
+    div.innerHTML=`<span>${car.brand} ${car.title} x ${qty} = NT$ ${subtotal.toLocaleString()}</span>
+                   <button onclick="removeFromCart('${id}')">刪除</button>`;
+    items.appendChild(div);
+  }
+  document.getElementById('cartSummary').textContent='總金額：NT$ '+total.toLocaleString();
+}
+
+document.getElementById('cartBtn').onclick=()=>{
+  document.getElementById('cartSidebar').classList.toggle('show');
+  renderCartSidebar();
+}
+
+function toggleView(){
+  const wrap=document.getElementById('products');
+  wrap.style.gridTemplateColumns=wrap.style.gridTemplateColumns==='1fr'?'repeat(auto-fill,minmax(260px,1fr))':'1fr';
+}
+
+// 初始化
+renderProducts(cars);
+updateCartUI();
+</script>
+</body>
+</html>
