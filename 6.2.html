@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>汽車進銷存系統</title>
+<style>
+:root{
+  --bg:#0f0f0f; --card:#1a1a1a; --accent:#0ff; --muted:#aaa;
+  --radius:12px; --shadow:0 6px 20px rgba(0,255,255,0.2);
+  font-family:"Noto Sans TC", system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+body{margin:0;background:var(--bg);color:white;}
+header{padding:12px 20px;background:#111;display:flex;justify-content:space-between;align-items:center;}
+header h1{margin:0;font-size:18px;}
+button{cursor:pointer;}
+.container{max-width:1200px;margin:20px auto;padding:0 20px;}
+.table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+.table th,.table td{border:1px solid #0ff;padding:8px;text-align:left;}
+.table th{background:#111;color:var(--accent);}
+input, select{padding:6px 8px;margin-right:6px;border-radius:6px;border:1px solid #0ff;background:transparent;color:white;}
+.btn{padding:6px 12px;border:none;border-radius:6px;background:var(--accent);color:#000;}
+.card{background:#111;padding:12px;margin-bottom:20px;border-radius:var(--radius);box-shadow:var(--shadow);}
+</style>
+</head>
+<body>
+<header>
+  <h1>汽車電子商務進銷存系統</h1>
+</header>
+<div class="container">
+
+  <div class="card">
+    <h2>商品清單</h2>
+    <table class="table" id="productTable">
+      <thead>
+        <tr>
+          <th>編號</th><th>品牌</th><th>車款</th><th>價格</th><th>庫存</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <input type="text" id="brandInput" placeholder="品牌">
+    <input type="text" id="titleInput" placeholder="車款">
+    <input type="number" id="priceInput" placeholder="價格">
+    <input type="number" id="stockInput" placeholder="庫存">
+    <button class="btn" onclick="addProduct()">新增商品</button>
+  </div>
+
+  <div class="card">
+    <h2>進貨 / 補貨</h2>
+    <select id="stockSelect"></select>
+    <input type="number" id="stockAmount" placeholder="增加數量">
+    <button class="btn" onclick="restockProduct()">進貨</button>
+  </div>
+
+  <div class="card">
+    <h2>銷售 / 購買</h2>
+    <select id="sellSelect"></select>
+    <input type="number" id="sellAmount" placeholder="購買數量">
+    <button class="btn" onclick="sellProduct()">購買</button>
+  </div>
+
+</div>
+
+<script>
+// 初始化商品資料
+let products = JSON.parse(localStorage.getItem('products')) || [
+  {id:'c1',brand:'BMW',title:'3 Series',price:2198000,stock:5},
+  {id:'c2',brand:'Bentley',title:'Continental GT',price:11200000,stock:2},
+  {id:'c3',brand:'Ferrari',title:'F8 Tributo',price:12800000,stock:1}
+];
+
+function saveProducts(){localStorage.setItem('products',JSON.stringify(products));}
+
+// 渲染商品表格
+function renderProducts(){
+  const tbody=document.querySelector('#productTable tbody');
+  tbody.innerHTML='';
+  products.forEach((p,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${i+1}</td><td>${p.brand}</td><td>${p.title}</td><td>${p.price.toLocaleString()}</td><td>${p.stock}</td>
+    <td><button onclick="deleteProduct('${p.id}')">刪除</button></td>`;
+    tbody.appendChild(tr);
+  });
+  renderSelectOptions();
+}
+
+// 更新下拉選單
+function renderSelectOptions(){
+  const stockSelect=document.getElementById('stockSelect');
+  const sellSelect=document.getElementById('sellSelect');
+  stockSelect.innerHTML='';
+  sellSelect.innerHTML='';
+  products.forEach(p=>{
+    stockSelect.innerHTML+=`<option value="${p.id}">${p.brand} ${p.title}</option>`;
+    sellSelect.innerHTML+=`<option value="${p.id}">${p.brand} ${p.title}</option>`;
+  });
+}
+
+// 新增商品
+function addProduct(){
+  const brand=document.getElementById('brandInput').value.trim();
+  const title=document.getElementById('titleInput').value.trim();
+  const price=Number(document.getElementById('priceInput').value);
+  const stock=Number(document.getElementById('stockInput').value);
+  if(!brand || !title || !price || stock<0){alert('請完整填寫商品資訊'); return;}
+  const id='c'+(new Date().getTime());
+  products.push({id,brand,title,price,stock});
+  saveProducts(); renderProducts();
+}
+
+// 刪除商品
+function deleteProduct(id){
+  products=products.filter(p=>p.id!==id);
+  saveProducts(); renderProducts();
+}
+
+// 進貨
+function restockProduct(){
+  const id=document.getElementById('stockSelect').value;
+  const amount=Number(document.getElementById('stockAmount').value);
+  if(amount<=0){alert('數量需大於0'); return;}
+  const p=products.find(p=>p.id===id);
+  p.stock+=amount;
+  saveProducts(); renderProducts();
+}
+
+// 銷售
+function sellProduct(){
+  const id=document.getElementById('sellSelect').value;
+  const amount=Number(document.getElementById('sellAmount').value);
+  const p=products.find(p=>p.id===id);
+  if(amount>p.stock){alert('庫存不足'); return;}
+  p.stock-=amount;
+  alert(`已購買 ${amount} 台 ${p.brand} ${p.title}`);
+  saveProducts(); renderProducts();
+}
+
+// 初始化
+renderProducts();
+</script>
+</body>
+</html>
