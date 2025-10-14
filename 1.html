@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>健康諮詢 + 初步分診聊天機器人（Demo）</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#60a5fa;--muted:#9aa7b2;--glass: rgba(255,255,255,0.04)}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Noto Sans TC',sans-serif}
+    body{margin:0;background:linear-gradient(180deg,#071027 0%, #071724 100%);color:#e6eef6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .app{width:100%;max-width:980px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:20px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    header{display:flex;gap:16px;align-items:center;margin-bottom:12px}
+    .logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#7dd3fc);display:flex;align-items:center;justify-content:center;font-weight:700;color:#03203a}
+    h1{margin:0;font-size:18px}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .content{display:grid;grid-template-columns:1fr 420px;gap:18px}
+    .panel{background:var(--card);border-radius:10px;padding:12px;border:1px solid rgba(255,255,255,0.03)}
+
+    /* Left: chat / triage */
+    .chat-wrap{display:flex;flex-direction:column;height:68vh}
+    .chat-log{flex:1;overflow:auto;padding:12px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+    .msg{margin-bottom:12px;display:flex;gap:10px}
+    .msg.user{justify-content:flex-end}
+    .bubble{max-width:74%;padding:10px 12px;border-radius:10px;background:var(--glass);font-size:14px;color:#e6eef6}
+    .bubble.user{background:linear-gradient(90deg,var(--accent),#7dd3fc);color:#04223a}
+    .meta{font-size:12px;color:var(--muted);margin-top:6px}
+
+    .controls{display:flex;gap:8px;margin-top:8px}
+    .input{flex:1;display:flex;gap:8px}
+    input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+    button{padding:10px 12px;border-radius:8px;border:0;background:var(--accent);color:#03203a;font-weight:600;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+
+    /* Right: controls */
+    .side{display:flex;flex-direction:column;gap:10px;height:68vh}
+    .section{padding:10px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    textarea,select,input[type=number]{width:100%;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:inherit}
+    .red-flag{background:linear-gradient(90deg,#ff7a7a,#ffb199);color:#300;background-clip:padding-box;padding:8px;border-radius:8px;font-weight:700}
+    .summary{white-space:pre-wrap;font-family:monospace;font-size:13px;background:rgba(255,255,255,0.02);padding:8px;border-radius:6px;border:1px dashed rgba(255,255,255,0.02)}
+
+    footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;color:var(--muted);font-size:13px}
+    .pill{padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)}
+
+    @media (max-width:980px){.content{grid-template-columns:1fr;}.side{height:auto}.chat-wrap{height:56vh}}
+  </style>
+</head>
+<body>
+  <div class="app" role="application">
+    <header>
+      <div class="logo">HT</div>
+      <div>
+        <h1>健康諮詢與初步分診 Chatbot — Demo</h1>
+        <p class="lead">Hybrid triage：臨床規則 + 生成式 AI 輔助語意理解（示範版）</p>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="panel chat-wrap">
+        <div id="chatLog" class="chat-log" aria-live="polite"></div>
+
+        <div class="controls">
+          <div class="input">
+            <input id="userInput" type="text" placeholder="請描述你的症狀（例如：發燒兩天、胸痛）" />
+            <button id="sendBtn">送出</button>
+          </div>
+          <button id="voiceBtn" class="ghost">🎤 語音</button>
+        </div>
+
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;justify-content:space-between">
+          <div class="meta">提示：此系統為示範，若有緊急情況請立即就醫。</div>
+          <div>
+            <button id="exportSummary" class="ghost">匯出摘要</button>
+            <button id="simulateEHR" class="ghost">模擬 EHR 同步</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel side">
+        <div class="section">
+          <label>病患資訊（示範）</label>
+          <input id="patientName" type="text" placeholder="姓名：王小明" value="王小明" />
+          <div style="display:flex;gap:8px;margin-top:8px"><input id="patientAge" type="number" placeholder="年齡" value="28" /><select id="patientSex"><option>男</option><option>女</option></select></div>
+        </div>
+
+        <div class="section">
+          <label>紅旗（Red flags）即時偵測</label>
+          <div id="redFlagBox" class="summary">目前無偵測到紅旗症狀</div>
+        </div>
+
+        <div class="section">
+          <label>即時分診建議（MVP）</label>
+          <div id="triageResult" class="summary">尚未輸入症狀</div>
+        </div>
+
+        <div class="section">
+          <label>臨床摘要（輸出給醫護）</label>
+          <div id="structuredSummary" class="summary">尚無摘要</div>
+        </div>
+
+        <div class="section">
+          <label>隱私與使用說明</label>
+          <div style="font-size:13px;color:var(--muted)">此 Demo 不儲存個資。正式運作需遵守當地醫療資料保護規定與臨床驗證。</div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      <div class="pill">Hybrid: Rules + LLM</div>
+      <div>示範版 • 不取代醫療判斷</div>
+    </footer>
+  </div>
+
+  <script>
+    // --- 基本資料與紅旗規則（可依醫院調整）
+    const RED_FLAG_KEYWORDS = [
+      '胸痛','呼吸困難','無意識','意識不清','嚴重出血','昏厥','中風','癲癇','突然視力變差','嚴重過敏','劇烈腹痛'
+    ];
+
+    const chatLog = document.getElementById('chatLog');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const voiceBtn = document.getElementById('voiceBtn');
+    const redFlagBox = document.getElementById('redFlagBox');
+    const triageResult = document.getElementById('triageResult');
+    const structuredSummary = document.getElementById('structuredSummary');
+    const exportSummary = document.getElementById('exportSummary');
+    const simulateEHR = document.getElementById('simulateEHR');
+
+    function appendMessage(text, who='bot'){
+      const container = document.createElement('div');
+      container.className = 'msg ' + (who==='user' ? 'user' : 'bot');
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble ' + (who==='user' ? 'user' : '');
+      bubble.textContent = text;
+      container.appendChild(bubble);
+      chatLog.appendChild(container);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function evaluateRedFlags(text){
+      const found = [];
+      const lower = text.replace(/[\s,，。？！]/g,'').toLowerCase();
+      for(const kw of RED_FLAG_KEYWORDS){
+        if(lower.includes(kw)) found.push(kw);
+      }
+      return found;
+    }
+
+    function simpleTriage(symptoms, age, sex){
+      // 基本 hybrid 邏輯示範
+      const red = evaluateRedFlags(symptoms);
+      if(red.length>0){
+        return {level:'緊急（立即就醫）', reason:'偵測到紅旗症狀：'+red.join(', '), redFlags:red};
+      }
+      // 若年齡高於75且有發燒或跌倒相關，提升等級
+      if(age>=75 && /發燒|跌倒|嘔吐/.test(symptoms)){
+        return {level:'建議門診或急診評估', reason:'高齡與症狀合併，建議評估'};
+      }
+      // 非緊急常見症狀 -> 建議居家照護或門診
+      if(/發燒|咳嗽|頭痛|喉嚨痛|流鼻水|腹瀉/.test(symptoms)){
+        return {level:'居家照護或預約門診', reason:'症狀看似輕微或常見感染性症狀'};
+      }
+      // 無法判定 -> 建議線上諮詢或人工分診
+      return {level:'需要人工評估', reason:'語意不足或不確定'};
+    }
+
+    async function callLLMForFollowups(symptoms, age, sex){
+      // 在真實應用中，這裡會呼叫後端 API（例如 /api/triage ）
+      // API 應以臨床規則 + LLM hybrid 返回補問句與更詳盡摘要。
+      // 這裡提供 mock 行為以示範前端整合。
+
+      // 警示：若要串實際 LLM，請使用後端代理及醫療資安機制（不要在客戶端放 API Key）。
+
+      // 模擬延遲
+      await new Promise(r=>setTimeout(r,700));
+
+      // 若內容太短，請求模型補問
+      if(symptoms.trim().length < 6){
+        return {
+          followups:['你發作多久了？','有發燒或服藥情況嗎？','目前是否有呼吸急促或胸痛？'],
+          summary:`主訴：${symptoms}\n建議：請補充發病時間、是否發燒、是否有慢性病/用藥`,
+          confidence:0.45
+        };
+      }
+
+      // 模擬生成的摘要與建議
+      const summaryParts = [];
+      summaryParts.push(`主訴：${symptoms}`);
+      summaryParts.push(`年齡/性別：${age}/${sex}`);
+      summaryParts.push('目前初步判斷：依症狀可能為上呼吸道感染或一般性病毒。');
+      summaryParts.push('建議：若48小時內症狀惡化（呼吸困難、高燒持續、意識不清），請立即就醫。');
+
+      return {
+        followups:[],
+        summary:summaryParts.join('\n'),
+        confidence:0.78
+      };
+    }
+
+    // 主流程
+    async function handleSubmit(){
+      const text = userInput.value.trim();
+      if(!text) return;
+      appendMessage(text,'user');
+      userInput.value='';
+
+      // 先用規則偵測紅旗
+      const age = Number(document.getElementById('patientAge').value) || 0;
+      const sex = document.getElementById('patientSex').value;
+      const red = evaluateRedFlags(text);
+      if(red.length>0){
+        redFlagBox.textContent = '偵測到紅旗：' + red.join(', ');
+      } else {
+        redFlagBox.textContent = '目前無偵測到紅旗症狀';
+      }
+
+      // 先給出簡單 triage 建議
+      const triage = simpleTriage(text, age, sex);
+      triageResult.textContent = `${triage.level}\n原因：${triage.reason}`;
+
+      // 呼叫（模擬）LLM 以取得補問句與臨床摘要
+      appendMessage('系統正在分析（規則 + AI）…');
+      const llm = await callLLMForFollowups(text, age, sex);
+
+      // 若 LLM 回傳補問問題，則詢問病患
+      if(llm.followups && llm.followups.length>0){
+        // 顯示補問
+        for(const q of llm.followups){
+          appendMessage(q,'bot');
+        }
+        appendMessage('請補充上述問題，以便更精準判斷。');
+        structuredSummary.textContent = llm.summary;
+        return;
+      }
+
+      // 合併輸出給使用者與醫護
+      const finalMsg = `${triage.level}\n${triage.reason}\n（AI 建議信心度 ${Math.round(llm.confidence*100)}%）`;
+      appendMessage(finalMsg,'bot');
+      structuredSummary.textContent = llm.summary;
+
+      // 若系統為緊急 -> 顯示紅色提醒泡泡
+      if(triage.level.includes('緊急')){
+        appendMessage('系統判定可能為緊急情況，請立即就醫或撥打緊急電話。','bot');
+      }
+    }
+
+    sendBtn.addEventListener('click',handleSubmit);
+    userInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') handleSubmit(); });
+
+    // 簡單的語音啟動（示範，需 HTTPS 與瀏覽器支援）
+    let recognition;
+    if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+      const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new R();
+      recognition.lang = 'zh-TW';
+      recognition.interimResults = false;
+      recognition.onresult = (e)=>{ const t = e.results[0][0].transcript; userInput.value = t; handleSubmit(); };
+      recognition.onerror = (e)=>{ appendMessage('語音辨識錯誤，請改用文字輸入。','bot'); };
+    } else {
+      voiceBtn.disabled = true;
+      voiceBtn.title = '此瀏覽器不支援語音辨識';
+    }
+    voiceBtn.addEventListener('click', ()=>{ if(recognition){ recognition.start(); appendMessage('開始錄音…（說話中）','bot'); }});
+
+    // 匯出摘要（下載 JSON）
+    exportSummary.addEventListener('click', ()=>{
+      const payload = {
+        patient: {name:document.getElementById('patientName').value, age:document.getElementById('patientAge').value, sex:document.getElementById('patientSex').value},
+        summary: structuredSummary.textContent,
+        triage: triageResult.textContent,
+        timestamp: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download = 'triage_summary.json'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    simulateEHR.addEventListener('click', ()=>{
+      // 模擬向院內 EHR 傳送（僅示範）
+      const data = {patient:document.getElementById('patientName').value, summary:structuredSummary.textContent};
+      appendMessage('模擬已將摘要傳送至院內 EHR（示範）');
+      console.log('EHR payload', data);
+    });
+
+    // 初始提示
+    appendMessage('歡迎使用健康諮詢 Chatbot（Demo）。請簡述你的症狀，例如："發燒兩天、咳嗽"。');
+  </script>
+</body>
+</html>
